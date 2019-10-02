@@ -59,7 +59,8 @@ class BaseEntity:
         return self.__str__()
 
     def __str__(self):
-        return '{}'.format(
+        return '{}{}'.format(
+            self.__class__.__name__,
             {item: getattr(self, item) for item in self.__class_items()}
         )
 
@@ -67,9 +68,15 @@ class BaseEntity:
 class Junction(BaseEntity, BaseCoordinate):
     __slots__ = 'id', 'elevation', 'max_depth'
 
+    def __str__(self):
+        return f'{super().__str__()}, {self.coordinates}'
+
 
 class Outfall(BaseEntity, BaseCoordinate):
     __slots__ = 'id', 'elevation', 'type'
+
+    def __str__(self):
+        return f'{super().__str__()}, {self.coordinates}'
 
 
 class Conduit(BaseEntity):
@@ -94,7 +101,7 @@ class Conduit(BaseEntity):
         """
         :return: List
         """
-        self._junctions[:]
+        return self._junctions
 
     def add_junction(self, val: Junction) -> None:
         """
@@ -111,6 +118,10 @@ class Conduit(BaseEntity):
         :return:
         """
         self._outfalls.append(val)
+
+    def __str__(self):
+        return f'{super().__str__()}, _junctions {self._junctions} , ' \
+               f'_outfalls {self._outfalls}'
 
 
 class Coordinate(BaseEntity):
@@ -171,7 +182,6 @@ def build(**kwargs):
         junctions.get(coordinate.node, dummy).coordinates = coordinate
         outfalls.get(coordinate.node, dummy).coordinates = coordinate
 
-    conduits_ = []
     for conduit in conduits.values():
         junction = junctions.get(conduit.from_node)
         if junction:
@@ -179,12 +189,12 @@ def build(**kwargs):
         outfall = outfalls.get(conduit.to_node)
         if outfall:
             conduit.add_outfall(outfall)
-        conduits_.append(conduit)
-        print('conduit', conduit, conduit.junctions, conduit.outfalls)
+
+    return kwargs
 
 
 if __name__ == '__main__':
     ARG_PARSER = argparse.ArgumentParser()
     ARG_PARSER.add_argument('infile', type=argparse.FileType('r'))
     ARGS = ARG_PARSER.parse_args()
-    build(**parse_file(ARGS.infile))
+    pprint(build(**parse_file(ARGS.infile)))
