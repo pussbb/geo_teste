@@ -24,7 +24,6 @@ class DummyEntity:
 
 
 class BaseCoordinate:
-
     _coordinates = None
 
     def __init__(self, *rest, coordinates=None):
@@ -40,42 +39,47 @@ class BaseCoordinate:
 
 
 class BaseEntity:
-
     __slots__ = ()
 
     def __init__(self, *args):
-        needed = len(self.__slots__)
+        items = self.__class_items()
+        needed = len(items)
         have = len(args)
         if needed > have:
             raise Exception(f'few params expected {self.__slots__}')
         if needed < have:
             raise Exception(f'Too many params provided for {self.__slots__}')
-        for index, item in enumerate(self.__slots__):
+        for index, item in enumerate(items):
             setattr(self, item, args[index])
+
+    def __class_items(self):
+        return [item for item in self.__slots__ if not item.startswith('_')]
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
         return '{}'.format(
-            {item: getattr(self, item) for item in self.__slots__}
+            {item: getattr(self, item) for item in self.__class_items()}
         )
 
 
 class Junction(BaseEntity, BaseCoordinate):
-
     __slots__ = 'id', 'elevation', 'max_depth'
 
 
 class Outfall(BaseEntity, BaseCoordinate):
-
     __slots__ = 'id', 'elevation', 'type'
 
 
 class Conduit(BaseEntity):
-    __slots__ = 'id', 'from_node', 'to_node', 'length'
-    _junctions = []
-    _outfalls = []
+    __slots__ = 'id', 'from_node', 'to_node', 'length', '_junctions', \
+                '_outfalls'
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._junctions = []
+        self._outfalls = []
 
     @property
     def outfalls(self) -> List[Outfall]:
@@ -90,7 +94,7 @@ class Conduit(BaseEntity):
         """
         :return: List
         """
-        self._junctions
+        self._junctions[:]
 
     def add_junction(self, val: Junction) -> None:
         """
@@ -110,7 +114,6 @@ class Conduit(BaseEntity):
 
 
 class Coordinate(BaseEntity):
-
     __slots__ = 'id', 'x', 'y'
 
     @property
@@ -168,6 +171,7 @@ def build(**kwargs):
         junctions.get(coordinate.node, dummy).coordinates = coordinate
         outfalls.get(coordinate.node, dummy).coordinates = coordinate
 
+    conduits_ = []
     for conduit in conduits.values():
         junction = junctions.get(conduit.from_node)
         if junction:
@@ -175,9 +179,8 @@ def build(**kwargs):
         outfall = outfalls.get(conduit.to_node)
         if outfall:
             conduit.add_outfall(outfall)
-
-    pprint([conduit.junctions for conduit in conduits.values()])
-    pprint([conduit.outfalls for conduit in conduits.values()])
+        conduits_.append(conduit)
+        print('conduit', conduit, conduit.junctions, conduit.outfalls)
 
 
 if __name__ == '__main__':
